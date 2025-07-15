@@ -41,15 +41,12 @@ public record ListarAlugueisQueryResultItem(
             return null;
         }
 
-        // Remove caracteres não numéricos
         String numeros = telefone.replaceAll("[^0-9]", "");
 
-        // Verifica se tem tamanho mínimo (DDD + número)
         if (numeros.length() < 11) {
-            return telefone; // Retorna original se não puder formatar
+            return telefone;
         }
 
-        // Formata: +55(11)98765-4321
         return "+" + numeros.substring(0, 2) +
                 "(" + numeros.substring(2, 4) + ")" +
                 numeros.substring(4, 9) + "-" +
