@@ -143,9 +143,8 @@ class ProcessarArquivoAluguelCommandTest {
 
     @Test
     void deveProcessarSegmentosCataliticos() throws Exception {
-        // 1. Configurar
-        int desiredSegmentSize = 2; // Tamanho desejado para o teste
-        int totalLinhas = 6; // 6 linhas
+        int desiredSegmentSize = 2;
+        int totalLinhas = 6;
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < totalLinhas; i++) {
@@ -157,21 +156,16 @@ class ProcessarArquivoAluguelCommandTest {
                 "file", "test.rtn", "text/plain", sb.toString().getBytes()
         );
 
-        // 2. Configurar mocks
         when(carroRepository.findById(1L)).thenReturn(Optional.of(carroValido));
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteValido));
         when(aluguelRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // 3. Criar spy e sobrescrever o cálculo
         ProcessarArquivoAluguelCommand spyProcessor = spy(processador);
 
-        // 4. 🔥 Forçar o tamanho do segmento ignorando a estimativa
         doReturn(desiredSegmentSize).when(spyProcessor).calculateOptimalSegmentSize(anyInt());
 
-        // 5. Executar
         spyProcessor.execute(file);
 
-        // 6. Verificar
         ArgumentCaptor<List<Aluguel>> captor = ArgumentCaptor.forClass(List.class);
         verify(aluguelRepository, times(3)).saveAll(captor.capture()); // 6/2 = 3 segmentos
 
@@ -201,7 +195,6 @@ class ProcessarArquivoAluguelCommandTest {
 
         System.out.println("Processado 100.000 linhas em " + duration + "ms");
 
-        int expectedSegments = (int) Math.ceil(100_000 / Math.sqrt(100_000)); // ≈ 317 segmentos
         verify(aluguelRepository, atLeastOnce()).saveAll(anyList());
         verify(aluguelRepository, atLeastOnce()).flush();
     }
