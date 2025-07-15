@@ -49,7 +49,6 @@ class CarrosRestControllerTest {
                 new ListarCarrosQueryResultItem(5L, "COROLLA")
         );
 
-        // Configura o mock para retornar uma página de resultados
         when(listarCarrosQuery.execute(any(Pageable.class))).thenAnswer(invocation -> {
             Pageable pageable = invocation.getArgument(0);
             int page = pageable.getPageNumber();
@@ -88,7 +87,6 @@ class CarrosRestControllerTest {
 
     @Test
     void shouldReturnEmptyPageWhenNoCars() throws Exception {
-        // Sobrescreve o mock para retornar lista vazia
         when(listarCarrosQuery.execute(any(Pageable.class))).thenReturn(
                 new PageImpl<>(List.of(), Pageable.unpaged(), 0)
         );
@@ -101,7 +99,6 @@ class CarrosRestControllerTest {
 
     @Test
     void shouldHandleServiceErrors() throws Exception {
-        // Configura o mock para lançar exceção
         when(listarCarrosQuery.execute(any(Pageable.class)))
                 .thenThrow(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR));
 
