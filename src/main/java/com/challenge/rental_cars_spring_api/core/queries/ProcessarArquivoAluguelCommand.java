@@ -47,9 +47,9 @@ public class ProcessarArquivoAluguelCommand {
 
     protected int calculateOptimalSegmentSize(int estimatedLines) {
         int sqrtSize = Math.max(1, (int) Math.sqrt(estimatedLines));
-        return Math.min(sqrtSize, 100); // 🔥 Limite máximo de 100
+        return Math.min(sqrtSize, 100);
     }
-    private int optimalSegmentSize;
+
 
     @Transactional
     public void execute(MultipartFile file) {
@@ -90,10 +90,9 @@ public class ProcessarArquivoAluguelCommand {
                         segmentBuffer.add(aluguel);
                         successCount++;
 
-                        // 🔥🔥🔥 CORREÇÃO: Criar nova instância ao invés de clear() + reuse
                         if (segmentBuffer.size() >= optimalSegmentSize) {
-                            saveSegmentCatalytically(new ArrayList<>(segmentBuffer));  // Cópia defensiva
-                            segmentBuffer.clear();  // Prepara para novo segmento
+                            saveSegmentCatalytically(new ArrayList<>(segmentBuffer));
+                            segmentBuffer.clear();
                         }
                     } else {
                         errorCount++;
@@ -104,7 +103,6 @@ public class ProcessarArquivoAluguelCommand {
                 }
             }
 
-            // 🔥 FLUSH FINAL COM CÓPIA DEFENSIVA
             if (!segmentBuffer.isEmpty()) {
                 saveSegmentCatalytically(new ArrayList<>(segmentBuffer));
             }
