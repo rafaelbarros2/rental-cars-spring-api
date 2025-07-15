@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +45,12 @@ public class ProcessarArquivoAluguelCommand {
     private final ClienteRepository clienteRepository;
     private final AluguelRepository aluguelRepository;
 
+    protected int calculateOptimalSegmentSize(int estimatedLines) {
+        int sqrtSize = Math.max(1, (int) Math.sqrt(estimatedLines));
+        return Math.min(sqrtSize, 100); // 🔥 Limite máximo de 100
+    }
+    private int optimalSegmentSize;
+
     @Transactional
     public void execute(MultipartFile file) {
         if (file.isEmpty()) {
@@ -56,14 +63,12 @@ public class ProcessarArquivoAluguelCommand {
             int successCount = 0;
             int errorCount = 0;
 
-
             Map<Long, Carro> carroCache = new HashMap<>();
             Map<Long, Cliente> clienteCache = new HashMap<>();
-
             List<Aluguel> segmentBuffer = new ArrayList<>();
 
             int estimatedLines = estimateTotalLines(file);
-            int optimalSegmentSize = (int) Math.sqrt(estimatedLines);
+            int optimalSegmentSize = calculateOptimalSegmentSize(estimatedLines);
             log.info("Iniciando processamento catalítico. Segmentos: √{} ≈ {}",
                     estimatedLines, optimalSegmentSize);
 
@@ -80,28 +85,28 @@ public class ProcessarArquivoAluguelCommand {
                         continue;
                     }
 
-                    // Processamento da linha
                     Aluguel aluguel = processLine(line, lineNumber, carroCache, clienteCache);
                     if (aluguel != null) {
                         segmentBuffer.add(aluguel);
                         successCount++;
+
+                        // 🔥🔥🔥 CORREÇÃO: Criar nova instância ao invés de clear() + reuse
+                        if (segmentBuffer.size() >= optimalSegmentSize) {
+                            saveSegmentCatalytically(new ArrayList<>(segmentBuffer));  // Cópia defensiva
+                            segmentBuffer.clear();  // Prepara para novo segmento
+                        }
                     } else {
                         errorCount++;
                     }
-
-                    if (segmentBuffer.size() >= optimalSegmentSize) {
-                        saveSegmentCatalytically(segmentBuffer);
-                        segmentBuffer.clear(); // Memória é reutilizada!
-                    }
-
                 } catch (Exception e) {
-                    log.error("Linha {}: Erro crítico - {}", lineNumber, e.getMessage());
+                    log.error("Linha {}: Erro crítico - {}", lineNumber, e.getMessage(), e);
                     errorCount++;
                 }
             }
 
+            // 🔥 FLUSH FINAL COM CÓPIA DEFENSIVA
             if (!segmentBuffer.isEmpty()) {
-                saveSegmentCatalytically(segmentBuffer);
+                saveSegmentCatalytically(new ArrayList<>(segmentBuffer));
             }
 
             log.info("Processamento catalítico concluído! Linhas: {}, Sucessos: {}, Erros: {}",
@@ -113,11 +118,16 @@ public class ProcessarArquivoAluguelCommand {
         }
     }
 
-
     private void saveSegmentCatalytically(List<Aluguel> segment) {
-        log.debug("💾 Salvando segmento catalítico ({} aluguéis)", segment.size());
-        aluguelRepository.saveAll(segment);
+        if (segment.isEmpty()) {
+            log.debug("⏭️ Segmento vazio - ignorando salvamento");
+            return;
+        }
 
+        log.debug("💾 Salvando segmento com {} aluguéis", segment.size());
+        aluguelRepository.saveAll(segment);
+        aluguelRepository.flush();
+        log.trace(" Segmento salvo com sucesso");
     }
 
     private Aluguel processLine(String line, int lineNumber,
@@ -177,7 +187,6 @@ public class ProcessarArquivoAluguelCommand {
     }
 
     private int estimateTotalLines(MultipartFile file) {
-        // Heurística simples: tamanho_arquivo / tamanho_linha
         long fileSize = file.getSize();
         int estimated = (int) (fileSize / LINE_LENGTH);
 
@@ -193,6 +202,7 @@ public class ProcessarArquivoAluguelCommand {
             );
         }
     }
+
 
     private LocalDate parseDate(String dateStr, int lineNumber) {
         try {

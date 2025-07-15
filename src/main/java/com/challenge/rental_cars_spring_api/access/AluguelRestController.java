@@ -1,6 +1,6 @@
 package com.challenge.rental_cars_spring_api.access;
 
-import com.challenge.rental_cars_spring_api.core.queries.ListarAlugueisQuery; // Importar
+import com.challenge.rental_cars_spring_api.core.queries.ListarAlugueisQuery;
 import com.challenge.rental_cars_spring_api.core.queries.ProcessarArquivoAluguelCommand;
 import com.challenge.rental_cars_spring_api.core.queries.dtos.ListarAlugueisQueryResultItem;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,15 +9,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/alugueis")
@@ -34,19 +31,25 @@ public class AluguelRestController {
             @ApiResponse(responseCode = "400", description = "Requisição inválida"),
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
-    public ResponseEntity<String> uploadRtnFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Object> uploadRtnFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
-            return new ResponseEntity<>("Arquivo não pode ser vazio.", HttpStatus.BAD_REQUEST);
+            throw new IllegalArgumentException("Arquivo não pode ser vazio");
         }
+
         if (!file.getOriginalFilename().toLowerCase().endsWith(".rtn")) {
-            return new ResponseEntity<>("O arquivo deve ter a extensão .rtn.", HttpStatus.BAD_REQUEST);
+            throw new IllegalArgumentException("O arquivo deve ter a extensão .rtn");
         }
 
         try {
             processarArquivoAluguelCommand.execute(file);
-            return new ResponseEntity<>("Arquivo RTN processado com sucesso!", HttpStatus.OK);
+            return ResponseEntity.ok(
+                    Map.of(
+                            "message", "Arquivo RTN processado com sucesso!",
+                            "filename", file.getOriginalFilename()
+                    )
+            );
         } catch (Exception e) {
-            return new ResponseEntity<>("Erro ao processar o arquivo: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new RuntimeException("Erro ao processar o arquivo: " + e.getMessage(), e);
         }
     }
 

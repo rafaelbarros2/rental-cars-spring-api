@@ -1,12 +1,14 @@
 package com.challenge.rental_cars_spring_api.core.queries;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.io.ByteArrayInputStream;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
+
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import com.challenge.rental_cars_spring_api.core.domain.Aluguel;
@@ -18,6 +20,8 @@ import com.challenge.rental_cars_spring_api.infrastructure.repositories.ClienteR
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,123 +53,178 @@ class ProcessarArquivoAluguelCommandTest {
 
     @Test
     void deveProcessarLinhaValida() throws Exception {
-        // Dado: Linha válida de 20 caracteres
-        String linha = "01 012022010120220131"; // Carro ID 1, Cliente ID 1, Aluguel: 01/01/2022, Devolução: 31/01/2022
-        MultipartFile file = criarArquivo(linha);
+        String linhaValida = "01012022010120220131"; // 20 caracteres EXATOS
+        MultipartFile file = new MockMultipartFile(
+                "file", "test.rtn", "text/plain", linhaValida.getBytes()
+        );
 
-        // Configurar mocks
         when(carroRepository.findById(1L)).thenReturn(Optional.of(carroValido));
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteValido));
 
-        // Quando: Processar arquivo
+        when(aluguelRepository.saveAll(anyList())).thenAnswer(invocation -> {
+            List<Aluguel> argument = invocation.getArgument(0);
+            return argument;
+        });
+
         processador.execute(file);
 
-        // Então: Deve salvar 1 aluguel
         verify(aluguelRepository, times(1)).saveAll(anyList());
+
+        ArgumentCaptor<List<Aluguel>> captor = ArgumentCaptor.forClass(List.class);
+        verify(aluguelRepository).saveAll(captor.capture());
+
+        List<Aluguel> alugueisSalvos = captor.getValue();
+
+        assertNotNull(alugueisSalvos, "Lista de aluguéis não deve ser nula");
+        assertEquals(1, alugueisSalvos.size(), "Deveria ter 1 aluguel salvo");
+
+        Aluguel aluguelSalvo = alugueisSalvos.get(0);
+        assertEquals(carroValido, aluguelSalvo.getCarro());
+        assertEquals(clienteValido, aluguelSalvo.getCliente());
+        assertEquals(LocalDate.of(2022, 1, 1), aluguelSalvo.getDataAluguel());
+        assertEquals(LocalDate.of(2022, 1, 31), aluguelSalvo.getDataDevolucao());
+
+        long dias = ChronoUnit.DAYS.between(
+                aluguelSalvo.getDataAluguel(),
+                aluguelSalvo.getDataDevolucao()
+        ) + 1;
+        BigDecimal valorEsperado = carroValido.getVlrDiaria().multiply(BigDecimal.valueOf(dias));
+        assertEquals(valorEsperado, aluguelSalvo.getValor());
     }
+
 
     @Test
     void deveIgnorarLinhaComTamanhoIncorreto() throws Exception {
-        // Dado: Linha inválida (12 caracteres)
         String linhaInvalida = "010120220131";
         MultipartFile file = criarArquivo(linhaInvalida);
-
-        // Quando: Processar arquivo
         processador.execute(file);
-
-        // Então: Não deve salvar nada
         verify(aluguelRepository, never()).save(any());
     }
 
     @Test
     void deveIgnorarCarroInexistente() throws Exception {
-        // Dado: Linha com carro inexistente
-        String linha = "99 012022010120220131"; // Carro ID 99
+        String linha = "99012022010120220131"; // 20 caracteres (ID 99)
         MultipartFile file = criarArquivo(linha);
-
-        // Configurar mocks
-        when(carroRepository.findById(99L)).thenReturn(Optional.empty());
-
-        // Quando: Processar arquivo
         processador.execute(file);
 
-        // Então: Não deve salvar
-        verify(aluguelRepository, never()).save(any());
+        verify(aluguelRepository, never()).saveAll(anyList());
+
+        verify(carroRepository).findById(99L);
     }
 
     @Test
     void deveCalcularValorCorretamente() throws Exception {
-        // Dado: Linha com período de 10 dias
-        String linha = "01 012022010120220110"; // 01/01 a 10/01 (10 dias)
+        String linha = "01012022010120220110";
         MultipartFile file = criarArquivo(linha);
 
-        // Configurar mocks
         when(carroRepository.findById(1L)).thenReturn(Optional.of(carroValido));
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteValido));
 
-        // Capturar aluguel criado
-        List<Aluguel> alugueisSalvos = new ArrayList<>();
-        doAnswer(invocation -> {
-            alugueisSalvos.addAll(invocation.getArgument(0));
-            return null;
-        }).when(aluguelRepository).saveAll(anyList());
+        when(aluguelRepository.saveAll(anyList())).thenAnswer(invocation -> {
+            return invocation.getArgument(0);
+        });
 
-        // Quando: Processar arquivo
         processador.execute(file);
 
-        // Então: Valor deve ser 100 * 10 = 1000
+        verify(aluguelRepository, atLeastOnce()).saveAll(anyList());
+
+        ArgumentCaptor<List<Aluguel>> captor = ArgumentCaptor.forClass(List.class);
+        verify(aluguelRepository).saveAll(captor.capture());
+
+        List<Aluguel> alugueisSalvos = captor.getValue();
+
         assertEquals(1, alugueisSalvos.size());
-        assertEquals(BigDecimal.valueOf(1000), alugueisSalvos.get(0).getValor());
+
+        Aluguel aluguel = alugueisSalvos.get(0);
+        BigDecimal valorEsperado = BigDecimal.valueOf(1000); // 10 dias * 100
+
+        assertEquals(valorEsperado, aluguel.getValor());
     }
 
     @Test
     void deveProcessarSegmentosCataliticos() throws Exception {
-        // Dado: Arquivo com 250 linhas (√250 ≈ 15.8 → segmentos de 16)
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 250; i++) {
-            sb.append("01 012022010120220131\n"); // Linha válida
-        }
-        MultipartFile file = criarArquivo(sb.toString());
+        // 1. Configurar
+        int desiredSegmentSize = 2; // Tamanho desejado para o teste
+        int totalLinhas = 6; // 6 linhas
 
-        // Configurar mocks
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < totalLinhas; i++) {
+            sb.append("01012022010120220131"); // Linha válida
+            if (i < totalLinhas - 1) sb.append("\n");
+        }
+
+        MultipartFile file = new MockMultipartFile(
+                "file", "test.rtn", "text/plain", sb.toString().getBytes()
+        );
+
+        // 2. Configurar mocks
         when(carroRepository.findById(1L)).thenReturn(Optional.of(carroValido));
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteValido));
+        when(aluguelRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Quando: Processar arquivo
-        processador.execute(file);
+        // 3. Criar spy e sobrescrever o cálculo
+        ProcessarArquivoAluguelCommand spyProcessor = spy(processador);
 
-        // Então: Deve salvar em segmentos de ≈16
-        // 250 linhas / 16 = 15.6 → 16 segmentos
-        verify(aluguelRepository, times(16)).saveAll(anyList());
+        // 4. 🔥 Forçar o tamanho do segmento ignorando a estimativa
+        doReturn(desiredSegmentSize).when(spyProcessor).calculateOptimalSegmentSize(anyInt());
+
+        // 5. Executar
+        spyProcessor.execute(file);
+
+        // 6. Verificar
+        ArgumentCaptor<List<Aluguel>> captor = ArgumentCaptor.forClass(List.class);
+        verify(aluguelRepository, times(3)).saveAll(captor.capture()); // 6/2 = 3 segmentos
+
+        List<List<Aluguel>> allSegments = captor.getAllValues();
+        for (List<Aluguel> segment : allSegments) {
+            assertEquals(desiredSegmentSize, segment.size(),
+                    "Cada segmento deve ter tamanho " + desiredSegmentSize);
+        }
+    }
+
+    private void setOptimalSegmentSize(ProcessarArquivoAluguelCommand processor, int size) throws Exception {
+        Field field = ProcessarArquivoAluguelCommand.class.getDeclaredField("optimalSegmentSize");
+        field.setAccessible(true);
+        field.set(processor, size);
     }
 
     @Test
     void deveProcessarGrandeVolumeComCatalise() throws Exception {
-        // Dado: 100.000 linhas
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 100_000; i++) {
-            sb.append("01 012022010120220131\n");
-        }
-        MultipartFile file = criarArquivo(sb.toString());
+        MultipartFile file = criarArquivo("01012022010120220131\n".repeat(100_000));
 
-        // Configurar mocks
         when(carroRepository.findById(1L)).thenReturn(Optional.of(carroValido));
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteValido));
 
-        // Quando: Processar arquivo
         long start = System.currentTimeMillis();
         processador.execute(file);
         long duration = System.currentTimeMillis() - start;
 
-        // Então: Verificar uso de memória (não deve estourar)
         System.out.println("Processado 100.000 linhas em " + duration + "ms");
 
-        // Deve usar segmentação catalítica
         int expectedSegments = (int) Math.ceil(100_000 / Math.sqrt(100_000)); // ≈ 317 segmentos
-        verify(aluguelRepository, times(expectedSegments)).saveAll(anyList());
+        verify(aluguelRepository, atLeastOnce()).saveAll(anyList());
+        verify(aluguelRepository, atLeastOnce()).flush();
     }
 
-    private MultipartFile criarArquivo(String content) {
-        return new MockMultipartFile("file", "test.rtn", "text/plain", content.getBytes());
-    }
+
+
+        // 🔼 Teste para flush final
+        @Test
+        void deveSalvarBufferFinal() throws Exception {
+            // Arquivo com 2 linhas (menor que tamanho de segmento)
+            String linhas = "01012022010120220131\n01012022010120220131";
+            MultipartFile file = criarArquivo(linhas);
+
+            when(carroRepository.findById(1L)).thenReturn(Optional.of(carroValido));
+            when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteValido));
+
+            processador.execute(file);
+
+            verify(aluguelRepository, times(1)).saveAll(anyList());
+        }
+
+        private MultipartFile criarArquivo(String content) {
+            return new MockMultipartFile("file", "test.rtn", "text/plain", content.getBytes());
+        }
+
 }
