@@ -23,6 +23,7 @@
 		<liquibase.version>4.24.0</liquibase.version>
 		<lombok.version>1.18.30</lombok.version>
 		<jackson.version>2.15.4</jackson.version>
+		<spring.security.version>6.2.3</spring.security.version>
 	</properties>
 
 	<dependencies>
