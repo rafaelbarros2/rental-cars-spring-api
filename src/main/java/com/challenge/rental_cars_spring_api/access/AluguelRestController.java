@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/alugueis")
@@ -36,7 +37,7 @@ public class AluguelRestController {
             throw new IllegalArgumentException("Arquivo não pode ser vazio");
         }
 
-        if (!file.getOriginalFilename().toLowerCase().endsWith(".rtn")) {
+        if (!Objects.requireNonNull(file.getOriginalFilename()).toLowerCase().endsWith(".rtn")) {
             throw new IllegalArgumentException("O arquivo deve ter a extensão .rtn");
         }
 
