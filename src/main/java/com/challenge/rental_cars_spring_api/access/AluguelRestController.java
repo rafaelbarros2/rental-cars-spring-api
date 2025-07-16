@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import java.util.Objects;
@@ -74,16 +75,20 @@ public class AluguelRestController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista todos os aluguéis com paginação") // Adicionado
+    @Operation(summary = "Lista todos os aluguéis com paginação e filtros")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Lista de aluguéis retornada com sucesso.", content = { // Adicionado
-                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ListarAlugueisQueryResultItem.class))}), // Adicionado
-            @ApiResponse(responseCode = "500", description = "Erro interno no servidor", content = { // Adicionado
-                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)})}) // Adicionado
-    public ResponseEntity<Page<ListarAlugueisQueryResultItem>> listarAlugueis(@PageableDefault(sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
-        System.out.println("Pageable recebido em ListarAlugueisQuery: " + pageable);
-        System.out.println("Ordenação do Pageable: " + pageable.getSort());
-        Page<ListarAlugueisQueryResultItem> alugueis = listarAlugueisQuery.execute(pageable);
+            @ApiResponse(responseCode = "200", description = "Lista de aluguéis retornada com sucesso.", content = {
+                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ListarAlugueisQueryResultItem.class))}),
+            @ApiResponse(responseCode = "500", description = "Erro interno no servidor", content = {
+                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)})})
+    public ResponseEntity<Page<ListarAlugueisQueryResultItem>> listarAlugueis(
+            @PageableDefault(sort = "id", direction = Sort.Direction.ASC) Pageable pageable,
+            @RequestParam(name = "dataAluguel", required = false) LocalDate dataAluguel,
+            @RequestParam(name = "modeloCarro", required = false) String modeloCarro
+    ) {
+
+        Page<ListarAlugueisQueryResultItem> alugueis = listarAlugueisQuery.execute(pageable, dataAluguel, modeloCarro);
+
         return ResponseEntity.ok(alugueis);
     }
 
