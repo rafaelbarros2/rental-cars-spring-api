@@ -42,6 +42,7 @@ public class Aluguel implements Serializable {
     @Column(name = "pago")
     private Boolean pago;
 
+
     // Construtor para facilitar a criação a partir do arquivo RTN, sem o ID ainda.
     public Aluguel(Carro carro, Cliente cliente, LocalDate dataAluguel, LocalDate dataDevolucao, BigDecimal valor, Boolean pago) {
         this.carro = carro;

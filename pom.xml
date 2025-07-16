@@ -6,14 +6,16 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.2.10</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
+		<relativePath/> </parent>
+
 	<groupId>com.challenge</groupId>
 	<artifactId>rental-cars-spring-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>rental-cars-spring-api</name>
 	<description>Challenge for Spring Boot</description>
 	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>21</java.version>
 		<spring.boot.version>3.2.4</spring.boot.version>
 		<springdoc.version>2.5.0</springdoc.version>
@@ -23,12 +25,10 @@
 		<liquibase.version>4.24.0</liquibase.version>
 		<lombok.version>1.18.30</lombok.version>
 		<jackson.version>2.15.4</jackson.version>
-		<!-- REMOVA ESTA LINHA: <spring.security.version>6.2.3</spring.security.version> -->
 	</properties>
 
 	<dependencies>
 
-		<!--  DEPENDENCIAS BASICAS  -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -52,7 +52,6 @@
 			<version>${spring.boot.version}</version>
 		</dependency>
 
-		<!--  AUTENTICACAO E AUTORIZACAO  -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
@@ -64,7 +63,6 @@
 			<version>${spring.boot.version}</version>
 		</dependency>
 
-		<!--  PERSISTENCIA  -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -87,7 +85,6 @@
 			<version>${liquibase.version}</version>
 		</dependency>
 
-		<!--  UTILITÁRIOS  -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -100,7 +97,12 @@
 			<version>${jackson.version}</version>
 		</dependency>
 
-		<!--  TESTES  -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+			<version>${spring.boot.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -110,7 +112,8 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
-			<version>6.2.6</version> <scope>test</scope>
+			<version>6.2.6</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -134,6 +137,21 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.3.1</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+				</configuration>
+			</plugin>
+<!--			<plugin>-->
+<!--				<groupId>org.apache.maven.plugins</groupId>-->
+<!--				<artifactId>maven-surefire-plugin</artifactId>-->
+<!--				<version>3.1.2</version>-->
+<!--				<configuration> <argLine>-Dspring.profiles.active=test -Dlogging.level.org.springframework=DEBUG</argLine>-->
+<!--				</configuration>-->
+<!--			</plugin>-->
 		</plugins>
 	</build>
 

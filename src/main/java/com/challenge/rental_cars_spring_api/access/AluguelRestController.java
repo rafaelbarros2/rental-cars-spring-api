@@ -3,24 +3,25 @@ package com.challenge.rental_cars_spring_api.access;
 import com.challenge.rental_cars_spring_api.core.queries.ListarAlugueisQuery;
 import com.challenge.rental_cars_spring_api.core.queries.ProcessarArquivoAluguelCommand;
 import com.challenge.rental_cars_spring_api.core.queries.dtos.ListarAlugueisQueryResultItem;
-import com.challenge.rental_cars_spring_api.core.queries.dtos.ProcessamentoResult;
 import com.challenge.rental_cars_spring_api.exception.FileSizeExceededException;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+
 import java.util.Objects;
 
 @RestController
@@ -36,47 +37,29 @@ public class AluguelRestController {
     private String maxFileSize;
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    @CrossOrigin(origins = "*")
-    public ResponseEntity<Object> uploadRtnFile(@RequestParam("file") MultipartFile file) {
+    @CrossOrigin("*")
+    public ResponseEntity<String> uploadRtnFile(@RequestParam("file") MultipartFile file) {
 
             if (file.isEmpty()) {
-                System.out.println("❌ Erro: Arquivo vazio");
+
                 throw new IllegalArgumentException("Arquivo não pode ser vazio");
             }
 
             long maxBytes = parseSize(maxFileSize);
             if (file.getSize() > maxBytes) {
-                System.out.println("❌ Erro: Arquivo muito grande");
                 throw new FileSizeExceededException("O tamanho máximo permitido é " + maxFileSize);
             }
 
             if (!Objects.requireNonNull(file.getOriginalFilename()).toLowerCase().endsWith(".rtn")) {
-                System.out.println("❌ Erro: Extensão inválida");
                 throw new IllegalArgumentException("O arquivo deve ter a extensão .rtn");
             }
 
+            processarArquivoAluguelCommand.execute(file);
 
-            ProcessamentoResult resultado = processarArquivoAluguelCommand.execute(file);
 
+        return ResponseEntity.ok().body("O processamento pode levar alguns minutos," +
+                " mas enquanto isso pode continuar navegando avisaremos quando finalizar");
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("filename", file.getOriginalFilename());
-            response.put("totalLinhas", resultado.totalLinhas());
-            response.put("sucessos", resultado.sucessos());
-            response.put("numErros", resultado.numErros());
-            response.put("temErros", resultado.temErros());
-
-            if (resultado.temErros()) {
-                response.put("message", String.format(
-                        "%d linhas processadas com sucesso e %d linhas com erro. Entre em contato para saber mais detalhes.",
-                         resultado.sucessos(), resultado.numErros()
-                ));
-                response.put("errosDetalhados", resultado.errosDetalhados());
-            } else {
-                response.put("message", "Arquivo RTN processado com sucesso!");
-            }
-        return ResponseEntity.ok()
-                .body(response);
     }
 
     private long parseSize(String sizeStr) {
@@ -91,7 +74,15 @@ public class AluguelRestController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<ListarAlugueisQueryResultItem>> listarAlugueis(Pageable pageable) {
+    @Operation(summary = "Lista todos os aluguéis com paginação") // Adicionado
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de aluguéis retornada com sucesso.", content = { // Adicionado
+                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ListarAlugueisQueryResultItem.class))}), // Adicionado
+            @ApiResponse(responseCode = "500", description = "Erro interno no servidor", content = { // Adicionado
+                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)})}) // Adicionado
+    public ResponseEntity<Page<ListarAlugueisQueryResultItem>> listarAlugueis(@PageableDefault(sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        System.out.println("Pageable recebido em ListarAlugueisQuery: " + pageable);
+        System.out.println("Ordenação do Pageable: " + pageable.getSort());
         Page<ListarAlugueisQueryResultItem> alugueis = listarAlugueisQuery.execute(pageable);
         return ResponseEntity.ok(alugueis);
     }

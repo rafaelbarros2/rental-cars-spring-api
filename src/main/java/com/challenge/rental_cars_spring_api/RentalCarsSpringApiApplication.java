@@ -16,17 +16,4 @@ public class RentalCarsSpringApiApplication {
         SpringApplication.run(RentalCarsSpringApiApplication.class, args);
     }
 
-
-    @PostConstruct
-    public void debugTempDir() {
-        String tmpDir = System.getProperty("java.io.tmpdir");
-        System.out.println("=== TEMP DIR DEBUG ===");
-        System.out.println("java.io.tmpdir: " + tmpDir);
-
-        File dir = new File(tmpDir);
-        System.out.println("Existe: " + dir.exists());
-        System.out.println("É diretório: " + dir.isDirectory());
-        System.out.println("Pode escrever: " + dir.canWrite());
-        System.out.println("Pode ler: " + dir.canRead());
-    }
 }

@@ -1,28 +1,27 @@
 package com.challenge.rental_cars_spring_api.core.queries.dtos;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public record ProcessamentoResult(
-        int totalLinhas,
-        int sucessos,
-        int numErros,
+        long totalLinhas,
+        long sucessos,
+        long numErros,
         List<ErroLinha> errosDetalhados,
         boolean temErros
 ) {
 
     public record ErroLinha(
-            int linha,
+            long linha,
             String mensagem,
             String tipo
     ) {}
 
-    // Método de conveniência para criar resultado
-    public static ProcessamentoResult criar(int totalLinhas, int sucessos, int numErros, List<ErroLinha> erros) {
+    public static ProcessamentoResult criar(long totalLinhas, long sucessos, long numErros, List<ErroLinha> erros) {
         return new ProcessamentoResult(totalLinhas, sucessos, numErros, erros, numErros > 0);
     }
 
-    // Método para adicionar erro facilmente
-    public static ErroLinha criarErro(int linha, String mensagem, String tipo) {
+    public static ErroLinha criarErro(long linha, String mensagem, String tipo) {
         return new ErroLinha(linha, mensagem, tipo);
     }
 }
