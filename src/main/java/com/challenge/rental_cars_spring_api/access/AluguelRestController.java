@@ -87,8 +87,4 @@ public class AluguelRestController {
         return ResponseEntity.ok(alugueis);
     }
 
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("Backend funcionando! " + LocalDateTime.now());
-    }
 }
