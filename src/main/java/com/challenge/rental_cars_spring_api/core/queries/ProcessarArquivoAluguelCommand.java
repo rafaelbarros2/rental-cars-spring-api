@@ -3,6 +3,7 @@ package com.challenge.rental_cars_spring_api.core.queries;
 import com.challenge.rental_cars_spring_api.core.domain.Aluguel;
 import com.challenge.rental_cars_spring_api.core.domain.Carro;
 import com.challenge.rental_cars_spring_api.core.domain.Cliente;
+import com.challenge.rental_cars_spring_api.core.queries.dtos.ProcessamentoResult;
 import com.challenge.rental_cars_spring_api.infrastructure.repositories.AluguelRepository;
 import com.challenge.rental_cars_spring_api.infrastructure.repositories.CarroRepository;
 import com.challenge.rental_cars_spring_api.infrastructure.repositories.ClienteRepository;
@@ -51,7 +52,7 @@ public class ProcessarArquivoAluguelCommand {
 
 
     @Transactional
-    public void execute(MultipartFile file) {
+    public ProcessamentoResult  execute(MultipartFile file) {
         if (file.isEmpty()) {
             log.error("Arquivo enviado está vazio");
             throw new IllegalArgumentException("Arquivo vazio");
@@ -61,7 +62,7 @@ public class ProcessarArquivoAluguelCommand {
             int totalLines = 0;
             int successCount = 0;
             int errorCount = 0;
-
+            List<ProcessamentoResult.ErroLinha> errosDetalhados = new ArrayList<>();
             Map<Long, Carro> carroCache = new HashMap<>();
             Map<Long, Cliente> clienteCache = new HashMap<>();
             List<Aluguel> segmentBuffer = new ArrayList<>();
@@ -108,12 +109,14 @@ public class ProcessarArquivoAluguelCommand {
 
             log.info("Processamento catalítico concluído! Linhas: {}, Sucessos: {}, Erros: {}",
                     totalLines, successCount, errorCount);
-
+            return ProcessamentoResult.criar(totalLines, successCount, errorCount, errosDetalhados);
         } catch (Exception e) {
             log.error("Falha catastrófica no processamento: {}", e.getMessage(), e);
             throw new RuntimeException("Erro no processador catalítico", e);
         }
     }
+
+
 
     private void saveSegmentCatalytically(List<Aluguel> segment) {
         if (segment.isEmpty()) {
